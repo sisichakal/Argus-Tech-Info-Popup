@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         Argus Tech Info Popup
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      2.0
 // @description  Affiche un pop-in avec les informations techniques colorées sur l'Argus, y compris la puissance réelle maxi
 // @author       You
 // @match        https://www.largus.fr/fiche-technique/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=largus.fr
+// @updateURL    https://raw.githubusercontent.com/sisichakal/Argus-Tech-Info-Popup/main/argus-tech-info-popup.user.js
+// @downloadURL  https://raw.githubusercontent.com/sisichakal/Argus-Tech-Info-Popup/main/argus-tech-info-popup.user.js
 // @grant        none
 // ==/UserScript==
 
@@ -72,8 +74,46 @@
             : { color: '#4CAF50', background: '#4CAF5020' };
     }
 
-    // Extract a numeric value by matching label text among .labelInfo elements
+    /**
+     * Extract a value from the new largus.fr layout.
+     *
+     * The site now uses <table class="versions-table"> with simple
+     * <tr><td>Label</td><td>Value</td></tr> rows instead of the old
+     * .labelInfo / .valeur structure.
+     *
+     * We also fall back to the legacy .labelInfo / .valeur selectors
+     * in case the old layout is still served on some pages.
+     */
     function extractValue(searchTerms, isWeight = false, isVolume = false, isWheel = false) {
+        // --- New layout: versions-table <td> pairs ---
+        for (const term of searchTerms) {
+            const allRows = document.querySelectorAll('table.versions-table tr');
+            for (const row of allRows) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 2) continue;
+
+                const labelText = (cells[0].textContent || '').trim();
+                if (!labelText.toLowerCase().includes(term.toLowerCase())) continue;
+
+                const valueText = (cells[1].textContent || '').trim();
+                if (!valueText) continue;
+
+                if (isWheel) {
+                    const wheelMatch = valueText.match(/R(\d+)/i);
+                    if (wheelMatch) return wheelMatch[1];
+                }
+                if (isWeight || isVolume) {
+                    const cleanText = valueText.replace(/(\d)\s+(\d)/g, '$1$2');
+                    const match = cleanText.match(/[\d,]+\.?\d*/);
+                    if (match && match[0] !== '') return match[0].replace(',', '.');
+                } else {
+                    const match = valueText.match(/[\d,]+\.?\d*/);
+                    if (match && match[0] !== '') return match[0].replace(',', '.');
+                }
+            }
+        }
+
+        // --- Legacy layout fallback: .labelInfo / .valeur ---
         for (const term of searchTerms) {
             for (const labelElement of document.querySelectorAll('.labelInfo')) {
                 const labelText = labelElement.textContent || labelElement.innerText || '';
@@ -115,6 +155,21 @@
     }
 
     function extractArchitecture(searchTerms) {
+        // --- New layout: versions-table <td> pairs ---
+        for (const term of searchTerms) {
+            const allRows = document.querySelectorAll('table.versions-table tr');
+            for (const row of allRows) {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 2) continue;
+
+                const labelText = (cells[0].textContent || '').trim();
+                if (!labelText.toLowerCase().includes(term.toLowerCase())) continue;
+
+                return (cells[1].textContent || '').trim();
+            }
+        }
+
+        // --- Legacy layout fallback: .labelInfo / .valeur ---
         for (const term of searchTerms) {
             for (const labelElement of document.querySelectorAll('.labelInfo')) {
                 const labelText = labelElement.textContent || labelElement.innerText || '';
@@ -161,7 +216,7 @@
             extraUrbain:  extractValue(['extra urbain']),
             reservoir:    extractValue(['réservoir']),
             architecture: extractArchitecture(['architecture']),
-            roueSecours:  extractArchitecture(['type de roues de secours']),
+            roueSecours:  extractArchitecture(['type de roue de secours', 'type de roues de secours']),
         };
 
         console.log('Valeurs extraites:', data);
@@ -249,7 +304,7 @@
             align-items: center;
         `;
         header.innerHTML = `
-            <span>Informations Techniques v1.7</span>
+            <span>Informations Techniques v2.0</span>
             <span id="close-popup" style="cursor: pointer; font-size: 18px;">&times;</span>
         `;
 
