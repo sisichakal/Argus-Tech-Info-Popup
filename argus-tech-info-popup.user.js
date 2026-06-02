@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Argus Tech Info Popup
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Affiche un pop-in avec les informations techniques colorées sur l'Argus, y compris la puissance réelle maxi
 // @author       You
 // @match        https://www.largus.fr/fiche-technique/*
@@ -304,7 +304,7 @@
             align-items: center;
         `;
         header.innerHTML = `
-            <span>Informations Techniques v2.0</span>
+            <span>Informations Techniques v2.1</span>
             <span id="close-popup" style="cursor: pointer; font-size: 18px;">&times;</span>
         `;
 
